@@ -4,16 +4,6 @@ use crate::op::*;
 
 use crate::value::Value;
 
-struct Instruction {
-    op: Op,
-    arg: OpArg,
-}
-impl Instruction {
-    fn new(op: Op, arg: OpArg) -> Self {
-        Self { op, arg }
-    }
-}
-
 pub struct VM<'a> {
     // Entire Program.
     reader: &'a mut dyn BufRead,
@@ -26,11 +16,9 @@ pub struct VM<'a> {
     // Value stack.
     stack: Vec<Value>,
     // VM memory.
-    mem: [u8; 0xFFFF],
+    memo: Vec<Value>,
     // Set if parsing a framed stream.
     is_framed: bool,
-
-    ops: Vec<Instruction>,
 }
 impl<'a> VM<'a> {
     // Init the VM by reading the first OP of the buffer
@@ -42,9 +30,8 @@ impl<'a> VM<'a> {
             pc: 0,
             working_buffer: Box::new([]),
             stack: Vec::new(),
-            mem: [0; 0xFFFF],
+            memo: Vec::new(),
             is_framed: false,
-            ops: Vec::new(),
         };
         // Read the first 3 bytes. They should contain
         // 2 bytes of header + 1 initial OP, which may
@@ -62,8 +49,6 @@ impl<'a> VM<'a> {
             0..=5 => buf[1],
             _ => panic!("Unrecognized Pickle protocol version"),
         };
-        vm.ops
-            .push(Instruction::new(Op::Proto, OpArg::U1(vm.version)));
         // If the first OP is `Frame`, it means the stream
         // uses framing.
         if Op::from_u8(buf[2]) == Op::Frame {
@@ -73,11 +58,20 @@ impl<'a> VM<'a> {
                 .read_exact(&mut buf)
                 .expect("can't read frame size");
             let frame_size = u64::from_le_bytes(buf);
-            vm.ops
-                .push(Instruction::new(Op::Frame, OpArg::U8(frame_size)));
             vm.set_working_frame(frame_size as usize);
         }
         vm
+    }
+
+    // If stack has one final entry, pop it!
+    pub fn result(&mut self) -> Result<Value, ()> {
+        if let Some(value) = self.stack.pop() {
+           match value {
+            Value::Mark => return Err(()),
+            _ => return Ok(value),
+           } 
+        }
+        return Err(())
     }
 
     // Only call this method after an Op::Frame was read.
@@ -95,9 +89,9 @@ impl<'a> VM<'a> {
             return Err(());
         }
         let arg = self.read_arg(op.clone());
-        println!("CURRENT OP {:?} WITH ARG: {:?}", op, arg);
+//        println!("CURRENT OP {:?} WITH ARG: {:?}", op, arg);
+//        println!("VM STACK CURRENTLY IS {:?}", self.stack);
 
-        self.ops.push(Instruction::new(op.clone(), arg.clone()));
         Ok((op, arg))
     }
 
@@ -122,14 +116,18 @@ impl<'a> VM<'a> {
     fn read_arg(&mut self, op: Op) -> OpArg {
         match op {
             Op::Int => OpArg::DecimalNlShort(2),
-            Op::BinInt => todo!(),
+            Op::BinInt => OpArg::S4(i32::from_le_bytes(self.next_bytes::<4>())),
             Op::BinInt1 => OpArg::U1(self.next_byte()),
-            Op::BinInt2 => todo!(),
+            Op::BinInt2 => OpArg::U2(u16::from_le_bytes(self.next_bytes::<2>())),
             Op::Long => todo!(),
             Op::Long1 => todo!(),
             Op::Long4 => todo!(),
             Op::String => todo!(),
-            Op::Binstring => todo!(),
+            Op::Binstring => {
+                let len = i32::from_le_bytes(self.next_bytes::<4>());
+                let s = String::from_utf8(self.working_buffer[self.pc..self.pc+(len as usize)].into()).expect("meow");
+                OpArg::String1(s)
+            },
             Op::ShortBinstring => todo!(),
             Op::Binbytes => todo!(),
             Op::ShortBinbytes => todo!(),
@@ -138,19 +136,24 @@ impl<'a> VM<'a> {
             Op::Newtrue => todo!(),
             Op::Newfalse => todo!(),
             Op::Unicode => todo!(),
-            Op::ShortBinunicde => todo!(),
+            Op::ShortBinunicde => {
+                let len = self.next_byte();
+                let s = String::from_utf8(self.working_buffer[self.pc..self.pc+(len as usize)].into()).expect("meow");
+                self.pc += len as usize;
+                OpArg::String1(s)
+            },
             Op::Binunicode => todo!(),
             Op::Binunicode8 => todo!(),
             Op::Float => todo!(),
             Op::Binfloat => todo!(),
-            Op::EmptyList => todo!(),
+            Op::EmptyList => OpArg::NoArg,
             Op::Append => todo!(),
-            Op::Appends => todo!(),
+            Op::Appends => OpArg::NoArg,
             Op::List => todo!(),
             Op::EmptyTuple => todo!(),
-            Op::Tuple => todo!(),
+            Op::Tuple => OpArg::NoArg,
             Op::Tuple1 => todo!(),
-            Op::Tuple2 => todo!(),
+            Op::Tuple2 => OpArg::NoArg,
             Op::Tuple3 => OpArg::NoArg,
             Op::EmptyDict => todo!(),
             Op::Dict => todo!(),
@@ -195,20 +198,59 @@ impl<'a> VM<'a> {
     pub fn step(&mut self) -> bool {
         if let Ok((op, arg)) = self.decode() {
             match (op, arg) {
+                (Op::Tuple, OpArg::NoArg) => {
+                    let values = {
+                        let mut values: Vec<Value> = Vec::new();
+                        loop {
+                           let v = self.stack.pop().unwrap();
+                            if v == Value::Mark {
+                                break;
+                            }
+                            values.insert(0, v);
+                        }
+                        values
+                    };
+                    self.stack.push(Value::Tuple(values));
+                }
+                (Op::Tuple2, OpArg::NoArg) => {
+                    let b = self.stack.pop().expect("meow");
+                    let a = self.stack.pop().expect("meow");
+                    self.stack.push(Value::Tuple(vec![a, b]));
+                }
                 (Op::Tuple3, OpArg::NoArg) => {
                     let c = self.stack.pop().expect("meow");
                     let b = self.stack.pop().expect("meow");
                     let a = self.stack.pop().expect("meow");
                     self.stack.push(Value::Tuple(vec![a, b, c]));
                 }
-                (Op::Frame, OpArg::U8(v)) => self.stack.push(Value::Int(v)),
-                (Op::Mark, OpArg::NoArg) => println!("MARKING"),
-                (Op::LongBinPut, OpArg::U4(v)) => self.mem[v as usize] = self.stack.len() as u8,
-                (Op::Memoize, OpArg::NoArg) => {
-                    let val = self.stack.pop().unwrap();
-                    self.mem[0];
+                (Op::Appends, OpArg::NoArg) => {
+                    let mut values = {
+                        let mut values: Vec<Value> = Vec::new();
+                        loop {
+                           let v = self.stack.pop().unwrap();
+                            if v == Value::Mark {
+                                break;
+                            }
+                            values.push(v);
+                        }
+                        values
+                    };
+                    if let Some(Value::List(vec)) = self.stack.last_mut() {
+                        vec.append(&mut values);
+                    } else {
+                        panic!("Stack ordering was wrong")
+                    }
                 }
-                (Op::BinInt1, OpArg::U1(v)) => self.stack.push(Value::Int(v as u64)),
+                (Op::Frame, OpArg::U8(v)) => self.stack.push(Value::UInt(v)),
+                (Op::Mark, OpArg::NoArg) => self.stack.push(Value::Mark),
+                (Op::LongBinPut, OpArg::U4(v)) => todo!("some day"),
+                (Op::Memoize, OpArg::NoArg) => {
+                    let val = self.stack.last().unwrap();
+                    self.memo.push(val.clone());
+                }
+                (Op::ShortBinunicde, OpArg::String1(v)) => self.stack.push(Value::String(v)),
+                (Op::EmptyList, OpArg::NoArg) => self.stack.push(Value::List(Vec::new())),
+                (Op::BinInt1, OpArg::U1(v)) => self.stack.push(Value::UInt(v as u64)),
                 _ => unimplemented!(),
             }
             return true;

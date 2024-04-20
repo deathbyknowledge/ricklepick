@@ -1,9 +1,11 @@
+// https://github.com/python/cpython/blob/3.12/Lib/pickletools.py
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 mod op;
 mod value;
 mod vm;
+use value::Value;
 use vm::*;
 
 fn main() {
@@ -16,21 +18,24 @@ fn main() {
         }
     };
 
+    println!("Opening file {model_file}");
+
     let mut buf = BufReader::new(
         File::open(model_file.clone()).expect(format!("File not found {}", model_file).as_str()),
     );
-    parse(&mut buf);
-    println!("Opening file {model_file}");
+    let result = parse(&mut buf);
+    println!("Pickle contained => {:?}", result);
 }
 
-fn parse(buf: &mut dyn BufRead) {
+fn parse(buf: &mut dyn BufRead) -> Value {
     let mut vm = VM::from(buf);
 
     loop {
         if !vm.step() {
-            break;
+            return vm.result().expect("did not expect an error tbh");
         }
     }
+
 }
 
 fn dump(buff: &[u8]) {
