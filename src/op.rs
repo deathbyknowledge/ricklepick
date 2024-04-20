@@ -1,7 +1,3 @@
-use std::io::Read;
-
-use crate::value::Float;
-
 pub const MARK: u8 = 40;
 pub const EMPTY_TUPLE: u8 = 41;
 pub const STOP: u8 = 46;
@@ -143,8 +139,8 @@ pub enum Op {
     ReadonlyBuffer,
 }
 
-impl Op {
-    pub fn value(&self) -> u8 {
+impl Into<u8> for Op {
+    fn into(self) -> u8 {
         match self {
             Op::Int => INT,
             Op::BinInt => BININT,
@@ -216,9 +212,12 @@ impl Op {
             Op::ReadonlyBuffer => READONLY_BUFFER,
         }
     }
+}
 
-    pub fn from_u8(byte: u8) -> Self {
-        match byte {
+impl From<u8> for Op {
+    #[inline]
+    fn from(value: u8) -> Self {
+        match value {
             INT => Op::Int,
             BININT => Op::BinInt,
             BININT1 => Op::BinInt1,
@@ -287,44 +286,7 @@ impl Op {
             BYTEARRAY8 => Op::ByteArray8,
             NEXT_BUFFER => Op::NextBuffer,
             READONLY_BUFFER => Op::ReadonlyBuffer,
-            0..=u8::MAX => panic!("Can't parse unknown opcode {}", byte),
+            0..=u8::MAX => panic!("Can't parse unknown opcode {}", value),
         }
     }
-}
-
-impl From<u8> for Op {
-    #[inline]
-    fn from(value: u8) -> Self {
-        Self::from_u8(value)
-    }
-}
-
-// Arg type -> (Inner value type)
-#[derive(Debug, PartialEq, Clone)]
-pub enum OpArg {
-    NoArg,
-    DecimalNlShort(u16),
-    DecimalNlLong(u32),
-    S4(i32),
-    U1(u8),
-    U2(u16),
-    U4(u32),
-    U8(u64),
-    Long1(i64),
-    Long4(i64),
-    StringNl(String),
-    String1(String),
-    String4(String),
-    Bytes1(String),
-    Bytes4(String),
-    Bytes8(String),
-    UnicodeStringNl(String),
-    UnicodeString1(String),
-    UnicodeString4(String),
-    UnicodeString8(String),
-    FloatNl(Float),
-    F8Be(f64),
-    StringNlNoEscape(String),
-    StringNlNoEscapePair(String),
-    ByteArray8(String),
 }

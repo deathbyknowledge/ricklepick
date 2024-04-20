@@ -51,7 +51,7 @@ impl<'a> VM<'a> {
         };
         // If the first OP is `Frame`, it means the stream
         // uses framing.
-        if Op::from_u8(buf[2]) == Op::Frame {
+        if Op::Frame == buf[2].into() {
             vm.is_framed = true;
             let mut buf = [0; 8];
             vm.reader
@@ -83,7 +83,7 @@ impl<'a> VM<'a> {
         self.working_buffer = buf.into_boxed_slice();
     }
 
-    fn decode(&mut self) -> Result<(Op, OpArg), ()> {
+    fn decode(&mut self) -> Result<(Op, Value), ()> {
         let op = self.next_op();
         if let Op::Stop = op {
             return Err(());
@@ -113,12 +113,12 @@ impl<'a> VM<'a> {
         Op::from(self.next_byte())
     }
 
-    fn read_arg(&mut self, op: Op) -> OpArg {
+    fn read_arg(&mut self, op: Op) -> Value {
         match op {
-            Op::Int => OpArg::DecimalNlShort(2),
-            Op::BinInt => OpArg::S4(i32::from_le_bytes(self.next_bytes::<4>())),
-            Op::BinInt1 => OpArg::U1(self.next_byte()),
-            Op::BinInt2 => OpArg::U2(u16::from_le_bytes(self.next_bytes::<2>())),
+            Op::Int => todo!(),
+            Op::BinInt => Value::Int(i32::from_le_bytes(self.next_bytes::<4>())),
+            Op::BinInt1 => Value::UInt(self.next_byte() as u32),
+            Op::BinInt2 => Value::UInt(u16::from_le_bytes(self.next_bytes::<2>()) as u32),
             Op::Long => todo!(),
             Op::Long1 => todo!(),
             Op::Long4 => todo!(),
@@ -126,7 +126,8 @@ impl<'a> VM<'a> {
             Op::Binstring => {
                 let len = i32::from_le_bytes(self.next_bytes::<4>());
                 let s = String::from_utf8(self.working_buffer[self.pc..self.pc+(len as usize)].into()).expect("meow");
-                OpArg::String1(s)
+                self.pc += len as usize;
+                Value::String(s)
             },
             Op::ShortBinstring => todo!(),
             Op::Binbytes => todo!(),
@@ -140,21 +141,21 @@ impl<'a> VM<'a> {
                 let len = self.next_byte();
                 let s = String::from_utf8(self.working_buffer[self.pc..self.pc+(len as usize)].into()).expect("meow");
                 self.pc += len as usize;
-                OpArg::String1(s)
+                Value::String(s)
             },
             Op::Binunicode => todo!(),
             Op::Binunicode8 => todo!(),
             Op::Float => todo!(),
             Op::Binfloat => todo!(),
-            Op::EmptyList => OpArg::NoArg,
+            Op::EmptyList => Value::None,
             Op::Append => todo!(),
-            Op::Appends => OpArg::NoArg,
+            Op::Appends => Value::None,
             Op::List => todo!(),
             Op::EmptyTuple => todo!(),
-            Op::Tuple => OpArg::NoArg,
+            Op::Tuple => Value::None,
             Op::Tuple1 => todo!(),
-            Op::Tuple2 => OpArg::NoArg,
-            Op::Tuple3 => OpArg::NoArg,
+            Op::Tuple2 => Value::None,
+            Op::Tuple3 => Value::None,
             Op::EmptyDict => todo!(),
             Op::Dict => todo!(),
             Op::SetItem => todo!(),
@@ -164,15 +165,15 @@ impl<'a> VM<'a> {
             Op::FrozenSet => todo!(),
             Op::Pop => todo!(),
             Op::Dup => todo!(),
-            Op::Mark => OpArg::NoArg,
+            Op::Mark => Value::None,
             Op::PopMark => todo!(),
             Op::Get => todo!(),
             Op::BinGet => todo!(),
             Op::LongBinGet => todo!(),
             Op::Put => todo!(),
             Op::BinPut => todo!(),
-            Op::LongBinPut => OpArg::U4(u32::from_le_bytes(self.next_bytes::<4>())),
-            Op::Memoize => OpArg::NoArg,
+            Op::LongBinPut => Value::UInt(u32::from_le_bytes(self.next_bytes::<4>())),
+            Op::Memoize => Value::None,
             Op::Ext1 => todo!(),
             Op::Ext2 => todo!(),
             Op::Ext4 => todo!(),
@@ -184,9 +185,9 @@ impl<'a> VM<'a> {
             Op::Obj => todo!(),
             Op::NewObj => todo!(),
             Op::NewObjEx => todo!(),
-            Op::Proto => OpArg::U1(self.next_byte()),
+            Op::Proto => Value::UInt(self.next_byte() as u32),
             Op::Stop => todo!(),
-            Op::Frame => OpArg::U8(u64::from_le_bytes(self.next_bytes::<8>())),
+            Op::Frame => Value::ULong(u64::from_le_bytes(self.next_bytes::<8>())),
             Op::Persid => todo!(),
             Op::BinPersid => todo!(),
             Op::ByteArray8 => todo!(),
@@ -197,8 +198,10 @@ impl<'a> VM<'a> {
 
     pub fn step(&mut self) -> bool {
         if let Ok((op, arg)) = self.decode() {
-            match (op, arg) {
-                (Op::Tuple, OpArg::NoArg) => {
+            match (op, arg.clone()) {
+                // Create a tuple from all topmost values in stack
+                // delimited by a Mark object.
+                (Op::Tuple, _) => {
                     let values = {
                         let mut values: Vec<Value> = Vec::new();
                         loop {
@@ -212,18 +215,18 @@ impl<'a> VM<'a> {
                     };
                     self.stack.push(Value::Tuple(values));
                 }
-                (Op::Tuple2, OpArg::NoArg) => {
+                (Op::Tuple2, _) => {
                     let b = self.stack.pop().expect("meow");
                     let a = self.stack.pop().expect("meow");
                     self.stack.push(Value::Tuple(vec![a, b]));
                 }
-                (Op::Tuple3, OpArg::NoArg) => {
+                (Op::Tuple3, _) => {
                     let c = self.stack.pop().expect("meow");
                     let b = self.stack.pop().expect("meow");
                     let a = self.stack.pop().expect("meow");
                     self.stack.push(Value::Tuple(vec![a, b, c]));
                 }
-                (Op::Appends, OpArg::NoArg) => {
+                (Op::Appends, _) => {
                     let mut values = {
                         let mut values: Vec<Value> = Vec::new();
                         loop {
@@ -241,16 +244,15 @@ impl<'a> VM<'a> {
                         panic!("Stack ordering was wrong")
                     }
                 }
-                (Op::Frame, OpArg::U8(v)) => self.stack.push(Value::UInt(v)),
-                (Op::Mark, OpArg::NoArg) => self.stack.push(Value::Mark),
-                (Op::LongBinPut, OpArg::U4(v)) => todo!("some day"),
-                (Op::Memoize, OpArg::NoArg) => {
+                (Op::Frame, Value::ULong(_)) => self.stack.push(arg), // TODO: update
+                (Op::Mark, _) => self.stack.push(Value::Mark),
+                (Op::Memoize, _) => {
                     let val = self.stack.last().unwrap();
                     self.memo.push(val.clone());
                 }
-                (Op::ShortBinunicde, OpArg::String1(v)) => self.stack.push(Value::String(v)),
-                (Op::EmptyList, OpArg::NoArg) => self.stack.push(Value::List(Vec::new())),
-                (Op::BinInt1, OpArg::U1(v)) => self.stack.push(Value::UInt(v as u64)),
+                (Op::ShortBinunicde, Value::String(_)) => self.stack.push(arg),
+                (Op::EmptyList, _) => self.stack.push(Value::List(Vec::new())),
+                (Op::BinInt1, Value::UInt(_)) => self.stack.push(arg),
                 _ => unimplemented!(),
             }
             return true;
