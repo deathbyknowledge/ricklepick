@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     String(String),
@@ -10,4 +12,27 @@ pub enum Value {
     List(Vec<Value>),
     Mark,
     None
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::String(s) => write!(f, "'{s}'"),
+            Value::Int(v) => write!(f, "{v}"),
+            Value::UInt(v) => write!(f, "{v}"),
+            Value::Long(v) => write!(f, "{v}"),
+            Value::ULong(v) => write!(f, "{v}"),
+            Value::Float(v) => write!(f, "{v}"),
+            Value::Tuple(v) => {
+                let s = v.into_iter().map(|i| i.to_string()).collect::<Vec<String>>().join(", ");
+                write!(f, "({s})")
+            },
+            Value::List(v) => {
+                let s = v.into_iter().map(|i| i.to_string()).collect::<Vec<String>>().join(", ");
+                write!(f, "[{s}]")
+            },
+            Value::Mark => write!(f, "Mark"),
+            Value::None => write!(f, "None"),
+        }
+    }
 }

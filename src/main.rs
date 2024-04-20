@@ -24,7 +24,7 @@ fn main() {
         File::open(model_file.clone()).expect(format!("File not found {}", model_file).as_str()),
     );
     let result = parse(&mut buf);
-    println!("Pickle contained => {:#?}", result);
+    println!("{result}");
 }
 
 fn parse(buf: &mut dyn BufRead) -> Value {

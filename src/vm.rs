@@ -234,7 +234,7 @@ impl<'a> VM<'a> {
                             if v == Value::Mark {
                                 break;
                             }
-                            values.push(v);
+                            values.insert(0, v);
                         }
                         values
                     };
