@@ -152,7 +152,7 @@ impl<'a> VM<'a> {
             Op::Binunicode => todo!(),
             Op::Binunicode8 => todo!(),
             Op::Float => todo!(),
-            Op::Binfloat => todo!(),
+            Op::Binfloat => Value::Float(f64::from_be_bytes(self.next_bytes::<8>())),
             Op::EmptyList => Value::None,
             Op::Append => todo!(),
             Op::Appends => Value::None,
@@ -205,6 +205,34 @@ impl<'a> VM<'a> {
     pub fn step(&mut self) -> bool {
         if let Ok((op, arg)) = self.decode() {
             match (op, arg.clone()) {
+                (Op::Appends, _) => {
+                    let mut values = {
+                        let mut values: Vec<Value> = Vec::new();
+                        loop {
+                            let v = self.stack.pop().unwrap();
+                            if v == Value::Mark {
+                                break;
+                            }
+                            values.insert(0, v);
+                        }
+                        values
+                    };
+                    if let Some(Value::List(vec)) = self.stack.last_mut() {
+                        vec.append(&mut values);
+                    } else {
+                        panic!("Stack ordering was wrong")
+                    }
+                }
+                (Op::BinInt1, Value::UInt(_)) => self.stack.push(arg),
+                (Op::Binfloat, Value::Float(_)) => self.stack.push(arg),
+                (Op::EmptyList, _) => self.stack.push(Value::List(Vec::new())),
+                (Op::Frame, Value::ULong(_)) => self.stack.push(arg), // TODO: update
+                (Op::Mark, _) => self.stack.push(Value::Mark),
+                (Op::Memoize, _) => {
+                    let val = self.stack.last().unwrap();
+                    self.memo.push(val.clone());
+                }
+                (Op::ShortBinunicde, Value::String(_)) => self.stack.push(arg),
                 // Create a tuple from all topmost values in stack
                 // delimited by a Mark object.
                 (Op::Tuple, _) => {
@@ -232,33 +260,6 @@ impl<'a> VM<'a> {
                     let a = self.stack.pop().expect("meow");
                     self.stack.push(Value::Tuple(vec![a, b, c]));
                 }
-                (Op::Appends, _) => {
-                    let mut values = {
-                        let mut values: Vec<Value> = Vec::new();
-                        loop {
-                            let v = self.stack.pop().unwrap();
-                            if v == Value::Mark {
-                                break;
-                            }
-                            values.insert(0, v);
-                        }
-                        values
-                    };
-                    if let Some(Value::List(vec)) = self.stack.last_mut() {
-                        vec.append(&mut values);
-                    } else {
-                        panic!("Stack ordering was wrong")
-                    }
-                }
-                (Op::Frame, Value::ULong(_)) => self.stack.push(arg), // TODO: update
-                (Op::Mark, _) => self.stack.push(Value::Mark),
-                (Op::Memoize, _) => {
-                    let val = self.stack.last().unwrap();
-                    self.memo.push(val.clone());
-                }
-                (Op::ShortBinunicde, Value::String(_)) => self.stack.push(arg),
-                (Op::EmptyList, _) => self.stack.push(Value::List(Vec::new())),
-                (Op::BinInt1, Value::UInt(_)) => self.stack.push(arg),
                 _ => unimplemented!(),
             }
             return true;

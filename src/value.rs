@@ -22,7 +22,7 @@ impl Display for Value {
             Value::UInt(v) => write!(f, "{v}"),
             Value::Long(v) => write!(f, "{v}"),
             Value::ULong(v) => write!(f, "{v}"),
-            Value::Float(v) => write!(f, "{v}"),
+            Value::Float(v) => write!(f, "{v:.1}"),
             Value::Tuple(v) => {
                 let s = v
                     .iter()
