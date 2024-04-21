@@ -21,7 +21,7 @@ fn main() {
     println!("Opening file {model_file}");
 
     let mut buf = BufReader::new(
-        File::open(model_file.clone()).expect(format!("File not found {}", model_file).as_str()),
+        File::open(model_file.clone()).unwrap_or_else(|_| panic!("File not found {}", model_file)),
     );
     let result = parse(&mut buf);
     println!("{result}");
@@ -35,5 +35,4 @@ fn parse(buf: &mut dyn BufRead) -> Value {
             return vm.result().expect("did not expect an error tbh");
         }
     }
-
 }

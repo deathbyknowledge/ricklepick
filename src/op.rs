@@ -139,9 +139,9 @@ pub enum Op {
     ReadonlyBuffer,
 }
 
-impl Into<u8> for Op {
-    fn into(self) -> u8 {
-        match self {
+impl From<Op> for u8 {
+    fn from(op: Op) -> u8 {
+        match op {
             Op::Int => INT,
             Op::BinInt => BININT,
             Op::BinInt1 => BININT1,

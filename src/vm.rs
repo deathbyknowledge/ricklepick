@@ -66,12 +66,12 @@ impl<'a> VM<'a> {
     // If stack has one final entry, pop it!
     pub fn result(&mut self) -> Result<Value, ()> {
         if let Some(value) = self.stack.pop() {
-           match value {
-            Value::Mark => return Err(()),
-            _ => return Ok(value),
-           } 
+            match value {
+                Value::Mark => return Err(()),
+                _ => return Ok(value),
+            }
         }
-        return Err(())
+        Err(())
     }
 
     // Only call this method after an Op::Frame was read.
@@ -79,7 +79,7 @@ impl<'a> VM<'a> {
         let mut buf = vec![0; frame_size];
         self.reader
             .read_exact(&mut buf)
-            .expect(format!("couldn't read {frame_size} from reader").as_str());
+            .unwrap_or_else(|_| panic!("couldn't read {frame_size} from reader"));
         self.working_buffer = buf.into_boxed_slice();
     }
 
@@ -89,8 +89,8 @@ impl<'a> VM<'a> {
             return Err(());
         }
         let arg = self.read_arg(op.clone());
-//        println!("CURRENT OP {:?} WITH ARG: {:?}", op, arg);
-//        println!("VM STACK CURRENTLY IS {:?}", self.stack);
+        //        println!("CURRENT OP {:?} WITH ARG: {:?}", op, arg);
+        //        println!("VM STACK CURRENTLY IS {:?}", self.stack);
 
         Ok((op, arg))
     }
@@ -125,10 +125,13 @@ impl<'a> VM<'a> {
             Op::String => todo!(),
             Op::Binstring => {
                 let len = i32::from_le_bytes(self.next_bytes::<4>());
-                let s = String::from_utf8(self.working_buffer[self.pc..self.pc+(len as usize)].into()).expect("meow");
+                let s = String::from_utf8(
+                    self.working_buffer[self.pc..self.pc + (len as usize)].into(),
+                )
+                .expect("meow");
                 self.pc += len as usize;
                 Value::String(s)
-            },
+            }
             Op::ShortBinstring => todo!(),
             Op::Binbytes => todo!(),
             Op::ShortBinbytes => todo!(),
@@ -139,10 +142,13 @@ impl<'a> VM<'a> {
             Op::Unicode => todo!(),
             Op::ShortBinunicde => {
                 let len = self.next_byte();
-                let s = String::from_utf8(self.working_buffer[self.pc..self.pc+(len as usize)].into()).expect("meow");
+                let s = String::from_utf8(
+                    self.working_buffer[self.pc..self.pc + (len as usize)].into(),
+                )
+                .expect("meow");
                 self.pc += len as usize;
                 Value::String(s)
-            },
+            }
             Op::Binunicode => todo!(),
             Op::Binunicode8 => todo!(),
             Op::Float => todo!(),
@@ -205,7 +211,7 @@ impl<'a> VM<'a> {
                     let values = {
                         let mut values: Vec<Value> = Vec::new();
                         loop {
-                           let v = self.stack.pop().unwrap();
+                            let v = self.stack.pop().unwrap();
                             if v == Value::Mark {
                                 break;
                             }
@@ -230,7 +236,7 @@ impl<'a> VM<'a> {
                     let mut values = {
                         let mut values: Vec<Value> = Vec::new();
                         loop {
-                           let v = self.stack.pop().unwrap();
+                            let v = self.stack.pop().unwrap();
                             if v == Value::Mark {
                                 break;
                             }
@@ -257,6 +263,6 @@ impl<'a> VM<'a> {
             }
             return true;
         }
-        return false;
+        false
     }
 }

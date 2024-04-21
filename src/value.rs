@@ -11,7 +11,7 @@ pub enum Value {
     Tuple(Vec<Value>),
     List(Vec<Value>),
     Mark,
-    None
+    None,
 }
 
 impl Display for Value {
@@ -24,13 +24,21 @@ impl Display for Value {
             Value::ULong(v) => write!(f, "{v}"),
             Value::Float(v) => write!(f, "{v}"),
             Value::Tuple(v) => {
-                let s = v.into_iter().map(|i| i.to_string()).collect::<Vec<String>>().join(", ");
+                let s = v
+                    .iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
                 write!(f, "({s})")
-            },
+            }
             Value::List(v) => {
-                let s = v.into_iter().map(|i| i.to_string()).collect::<Vec<String>>().join(", ");
+                let s = v
+                    .iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
                 write!(f, "[{s}]")
-            },
+            }
             Value::Mark => write!(f, "Mark"),
             Value::None => write!(f, "None"),
         }
