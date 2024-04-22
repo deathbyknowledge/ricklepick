@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug, Clone)]
 pub enum Value {
+    Bool(bool),
     String(String),
     Int(i32),
     UInt(u32),
@@ -18,6 +19,7 @@ pub enum Value {
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::String(a), Value::String(b)) => a == b,
             (Value::Int(a), Value::Int(b)) => a == b,
             (Value::UInt(a), Value::UInt(b)) => a == b,
@@ -63,6 +65,7 @@ impl std::hash::Hash for Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Value::Bool(v) => write!(f,"{}", if *v {"True"} else {"False"}),
             Value::String(s) => write!(f, "'{s}'"),
             Value::Int(v) => write!(f, "{v}"),
             Value::UInt(v) => write!(f, "{v}"),

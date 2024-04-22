@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{BufRead, Read};
+use std::io::Read;
 
 use crate::op::*;
 
@@ -168,8 +168,8 @@ impl<'a> VM<'a> {
             Op::Memoize => Value::None,
             Op::NewObj => todo!(),
             Op::NewObjEx => todo!(),
-            Op::Newfalse => todo!(),
-            Op::Newtrue => todo!(),
+            Op::Newfalse => Value::None,
+            Op::Newtrue => Value::None,
             Op::NextBuffer => todo!(),
             Op::None => todo!(),
             Op::Obj => todo!(),
@@ -234,6 +234,12 @@ impl<'a> VM<'a> {
                 (Op::Memoize, _) => {
                     let val = self.stack.last().unwrap();
                     self.memo.push(val.clone());
+                }
+                (Op::Newfalse, _) => {
+                    self.stack.push(Value::Bool(false));
+                }
+                (Op::Newtrue, _) => {
+                    self.stack.push(Value::Bool(true));
                 }
                 (Op::SetItems, _) => {
                     let values = {

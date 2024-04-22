@@ -6,7 +6,7 @@ DATA_DIR = f"{ROOT_DIR}/data/"
 
 
 test1 = (1, 2, 3, 4, (5, 6, 7), 'Test', ('This is just a test.', [2, 4, 6, 8]), 'One', 'Two', 'Three')
-test2 = (1, 2.0, 3, 4.0, (5, 6, 7), 'Test', ('This is just a test.', [2, 4, 6, 8]), 'One', 'Two', 'Three')
+test2 = (1, 2.0, 3, 4.0, (5, False, 7), 'Test', ('This is just a test.', [2, 4, 6, True]), 'One', 'Two', 'Three')
 test3 = {
   'a': ((5, 6, 7, 'This is just a test.', [2, 4, 6, 8]), 'One', 'Two', 'Three'),
   'b': 10e11
