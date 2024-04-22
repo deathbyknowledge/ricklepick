@@ -12,8 +12,45 @@ pub enum Value {
     Tuple(Vec<Value>),
     List(Vec<Value>),
     Dict(HashMap<Value, Value>),
+    Object(Instance),
     Mark,
     None,
+}
+
+#[derive(Debug, Clone)]
+pub struct Instance{
+    name: String,
+    module: String,
+    fields: HashMap<String, Value>,
+    pub args: Vec<Value>,
+    pub kwargs: Option<HashMap<String, Value>>,
+}
+
+impl Instance {
+    pub fn new(name: String, module: String) -> Self {
+        Instance {name, module, fields: HashMap::new(), args: Vec::new(), kwargs: None }
+    }
+
+    pub fn set_fields(&mut self, new_fields: HashMap<Value, Value>) {
+        for (k, v) in new_fields {
+            if let Value::String(k) = k {
+                self.fields.insert(k, v);
+            } else {
+                panic!("tried using a non string for an obj field name");
+            }
+        }
+    }
+
+    pub fn fields_to_string(&self) -> String {
+        let mut vec: Vec<_> = self.fields.iter().collect();
+        vec.sort_by_key(|&(k, _)| k.clone());
+        let s = vec
+            .iter()
+            .map(|(k, v)| format!("{k}: {v}"))
+            .collect::<Vec<String>>()
+            .join(", ");
+        return s;
+    }
 }
 
 impl PartialEq for Value {
@@ -98,6 +135,7 @@ impl Display for Value {
                     .join(", ");
                 write!(f, "[{s}]")
             }
+            Value::Object(inst) => write!(f, "<{}.{} object at {:p}> (fields: {:?}, args: {:?}, kwargs: {:?})", inst.module, inst.name, inst, inst.fields_to_string(), inst.args, inst.kwargs),
             Value::Mark => write!(f, "Mark"),
             Value::None => write!(f, "None"),
         }

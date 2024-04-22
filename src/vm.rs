@@ -3,7 +3,7 @@ use std::io::Read;
 
 use crate::op::*;
 
-use crate::value::Value;
+use crate::value::{Instance, Value};
 
 pub struct VM<'a> {
     // Entire Program.
@@ -123,7 +123,7 @@ impl<'a> VM<'a> {
             Op::Binbytes => todo!(),
             Op::Binbytes8 => todo!(),
             Op::Binfloat => Value::Float(f64::from_be_bytes(self.next_bytes::<8>())),
-            Op::BinGet => todo!(),
+            Op::BinGet => Value::UInt(self.next_byte() as u32),
             Op::BinInt => Value::Int(i32::from_le_bytes(self.next_bytes::<4>())),
             Op::BinInt1 => Value::UInt(self.next_byte() as u32),
             Op::BinInt2 => Value::UInt(u16::from_le_bytes(self.next_bytes::<2>()) as u32),
@@ -140,14 +140,14 @@ impl<'a> VM<'a> {
             Op::Binunicode => todo!(),
             Op::Binunicode8 => todo!(),
             Op::BinPut => todo!(),
-            Op::Build => todo!(),
+            Op::Build => Value::None,
             Op::ByteArray8 => todo!(),
             Op::Dict => todo!(),
             Op::Dup => todo!(),
             Op::EmptyDict => Value::None,
             Op::EmptyList => Value::None,
             Op::EmptySet => todo!(),
-            Op::EmptyTuple => todo!(),
+            Op::EmptyTuple => Value::None,
             Op::Ext1 => todo!(),
             Op::Ext2 => todo!(),
             Op::Ext4 => todo!(),
@@ -166,7 +166,7 @@ impl<'a> VM<'a> {
             Op::LongBinPut => Value::UInt(u32::from_le_bytes(self.next_bytes::<4>())),
             Op::Mark => Value::None,
             Op::Memoize => Value::None,
-            Op::NewObj => todo!(),
+            Op::NewObj => Value::None,
             Op::NewObjEx => todo!(),
             Op::Newfalse => Value::None,
             Op::Newtrue => Value::None,
@@ -193,7 +193,7 @@ impl<'a> VM<'a> {
                 self.pc += len as usize;
                 Value::String(s)
             }
-            Op::StackGlobal => todo!(),
+            Op::StackGlobal => Value::None,
             Op::Stop => todo!(),
             Op::String => todo!(),
             Op::Tuple => Value::None,
@@ -222,13 +222,27 @@ impl<'a> VM<'a> {
                     if let Some(Value::List(vec)) = self.stack.last_mut() {
                         vec.append(&mut values);
                     } else {
-                        panic!("Stack ordering was wrong")
+                        panic!("Stack ordering was wrong");
                     }
                 }
                 (Op::BinInt1, Value::UInt(_)) => self.stack.push(arg),
                 (Op::Binfloat, Value::Float(_)) => self.stack.push(arg),
-                (Op::EmptyList, _) => self.stack.push(Value::List(Vec::new())),
+                (Op::BinGet, Value::UInt(idx)) => {
+                    self.stack.push(self.memo.get_mut(idx as usize).unwrap().clone());
+                },
+                (Op::Build, _) => {
+                    let data = self.stack.pop().expect("moo");
+                    let instance = self.stack.pop().expect("moo");
+                    if let (Value::Object(mut inst), Value::Dict(dict)) = (instance, data) {
+                        inst.set_fields(dict);
+                        self.stack.push(Value::Object(inst));
+                    } else {
+                        panic!("Stack ordering was wrong")
+                    }
+                },
                 (Op::EmptyDict, _) => self.stack.push(Value::Dict(HashMap::new())),
+                (Op::EmptyList, _) => self.stack.push(Value::List(Vec::new())),
+                (Op::EmptyTuple, _) => self.stack.push(Value::Tuple(Vec::new())),
                 (Op::Frame, Value::ULong(_)) => self.stack.push(arg), // TODO: update
                 (Op::Mark, _) => self.stack.push(Value::Mark),
                 (Op::Memoize, _) => {
@@ -237,6 +251,16 @@ impl<'a> VM<'a> {
                 }
                 (Op::Newfalse, _) => {
                     self.stack.push(Value::Bool(false));
+                }
+                (Op::NewObj, _) =>  {
+                    let args = self.stack.pop().expect("moo");
+                    let instance = self.stack.pop().expect("moo");
+                    if let (Value::Object(mut inst), Value::Tuple(args)) = (instance, args) {
+                        inst.args = args;
+                        self.stack.push(Value::Object(inst));
+                    } else {
+                        panic!("Stack ordering was wrong");
+                    }
                 }
                 (Op::Newtrue, _) => {
                     self.stack.push(Value::Bool(true));
@@ -260,10 +284,20 @@ impl<'a> VM<'a> {
                             map.insert(k, v);
                         }
                     } else {
-                        panic!("Stack ordering was wrong")
+                        panic!("Stack ordering was wrong");
                     }
                 }
                 (Op::ShortBinunicde, Value::String(_)) => self.stack.push(arg),
+                // Push a global object on the stack.
+                (Op::StackGlobal, _) => { 
+                    let name = self.stack.pop().unwrap();
+                    let module = self.stack.pop().unwrap();
+                    if let (Value::String(name), Value::String(module)) = (name, module) {
+                        self.stack.push(Value::Object(Instance::new(name, module)))
+                    } else {
+                        panic!("Stack ordering was wrong");
+                    }
+                },
                 // Create a tuple from all topmost values in stack
                 // delimited by a Mark object.
                 (Op::Tuple, _) => {
