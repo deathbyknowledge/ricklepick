@@ -7,7 +7,10 @@ DATA_DIR = f"{ROOT_DIR}/data/"
 
 test1 = (1, 2, 3, 4, (5, 6, 7), 'Test', ('This is just a test.', [2, 4, 6, 8]), 'One', 'Two', 'Three')
 test2 = (1, 2.0, 3, 4.0, (5, 6, 7), 'Test', ('This is just a test.', [2, 4, 6, 8]), 'One', 'Two', 'Three')
-
+test3 = {
+  'a': ((5, 6, 7, 'This is just a test.', [2, 4, 6, 8]), 'One', 'Two', 'Three'),
+  'b': 10e11
+}
 
 def write_pickle_file(test_name, data): 
   with open(f"{DATA_DIR}{test_name}", "wb") as f:
@@ -21,5 +24,7 @@ def read_pickle_file(test_name):
 
 write_pickle_file("test1", test1)
 write_pickle_file("test2", test2)
+write_pickle_file("test3", test3)
 read_pickle_file("test1")
 read_pickle_file("test2")
+read_pickle_file("test3")

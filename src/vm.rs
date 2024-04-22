@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::BufRead;
 
 use crate::op::*;
@@ -89,8 +90,8 @@ impl<'a> VM<'a> {
             return Err(());
         }
         let arg = self.read_arg(op.clone());
-        //        println!("CURRENT OP {:?} WITH ARG: {:?}", op, arg);
-        //        println!("VM STACK CURRENTLY IS {:?}", self.stack);
+        //println!("CURRENT OP {:?} WITH ARG: {:?}", op, arg);
+        //println!("VM STACK CURRENTLY IS {:?}", self.stack);
 
         Ok((op, arg))
     }
@@ -115,14 +116,16 @@ impl<'a> VM<'a> {
 
     fn read_arg(&mut self, op: Op) -> Value {
         match op {
-            Op::Int => todo!(),
+            Op::AddItems => todo!(),
+            Op::Append => todo!(),
+            Op::Appends => Value::None,
+            Op::Binbytes => todo!(),
+            Op::Binbytes8 => todo!(),
+            Op::Binfloat => Value::Float(f64::from_be_bytes(self.next_bytes::<8>())),
+            Op::BinGet => todo!(),
             Op::BinInt => Value::Int(i32::from_le_bytes(self.next_bytes::<4>())),
             Op::BinInt1 => Value::UInt(self.next_byte() as u32),
             Op::BinInt2 => Value::UInt(u16::from_le_bytes(self.next_bytes::<2>()) as u32),
-            Op::Long => todo!(),
-            Op::Long1 => todo!(),
-            Op::Long4 => todo!(),
-            Op::String => todo!(),
             Op::Binstring => {
                 let len = i32::from_le_bytes(self.next_bytes::<4>());
                 let s = String::from_utf8(
@@ -132,14 +135,54 @@ impl<'a> VM<'a> {
                 self.pc += len as usize;
                 Value::String(s)
             }
-            Op::ShortBinstring => todo!(),
-            Op::Binbytes => todo!(),
-            Op::ShortBinbytes => todo!(),
-            Op::Binbytes8 => todo!(),
-            Op::None => todo!(),
-            Op::Newtrue => todo!(),
+            Op::BinPersid => todo!(),
+            Op::Binunicode => todo!(),
+            Op::Binunicode8 => todo!(),
+            Op::BinPut => todo!(),
+            Op::Build => todo!(),
+            Op::ByteArray8 => todo!(),
+            Op::Dict => todo!(),
+            Op::Dup => todo!(),
+            Op::EmptyDict => Value::None,
+            Op::EmptyList => Value::None,
+            Op::EmptySet => todo!(),
+            Op::EmptyTuple => todo!(),
+            Op::Ext1 => todo!(),
+            Op::Ext2 => todo!(),
+            Op::Ext4 => todo!(),
+            Op::Float => todo!(),
+            Op::Frame => Value::ULong(u64::from_le_bytes(self.next_bytes::<8>())),
+            Op::FrozenSet => todo!(),
+            Op::Get => todo!(),
+            Op::GlobalOpcode => todo!(),
+            Op::Int => todo!(),
+            Op::Inst => todo!(),
+            Op::List => todo!(),
+            Op::Long => todo!(),
+            Op::Long1 => todo!(),
+            Op::Long4 => todo!(),
+            Op::LongBinGet => todo!(),
+            Op::LongBinPut => Value::UInt(u32::from_le_bytes(self.next_bytes::<4>())),
+            Op::Mark => Value::None,
+            Op::Memoize => Value::None,
+            Op::NewObj => todo!(),
+            Op::NewObjEx => todo!(),
             Op::Newfalse => todo!(),
-            Op::Unicode => todo!(),
+            Op::Newtrue => todo!(),
+            Op::NextBuffer => todo!(),
+            Op::None => todo!(),
+            Op::Obj => todo!(),
+            Op::Persid => todo!(),
+            Op::Pop => todo!(),
+            Op::PopMark => todo!(),
+            Op::Proto => Value::UInt(self.next_byte() as u32),
+            Op::Put => todo!(),
+            Op::ReadonlyBuffer => todo!(),
+            Op::Reduce => todo!(),
+            Op::SetItem => todo!(),
+            Op::SetItems => Value::None,
+            Op::ShortBinbytes => todo!(),
+            Op::ShortBinstring => todo!(),
             Op::ShortBinunicde => {
                 let len = self.next_byte();
                 let s = String::from_utf8(
@@ -149,56 +192,14 @@ impl<'a> VM<'a> {
                 self.pc += len as usize;
                 Value::String(s)
             }
-            Op::Binunicode => todo!(),
-            Op::Binunicode8 => todo!(),
-            Op::Float => todo!(),
-            Op::Binfloat => Value::Float(f64::from_be_bytes(self.next_bytes::<8>())),
-            Op::EmptyList => Value::None,
-            Op::Append => todo!(),
-            Op::Appends => Value::None,
-            Op::List => todo!(),
-            Op::EmptyTuple => todo!(),
+            Op::StackGlobal => todo!(),
+            Op::Stop => todo!(),
+            Op::String => todo!(),
             Op::Tuple => Value::None,
             Op::Tuple1 => todo!(),
             Op::Tuple2 => Value::None,
             Op::Tuple3 => Value::None,
-            Op::EmptyDict => todo!(),
-            Op::Dict => todo!(),
-            Op::SetItem => todo!(),
-            Op::SetItems => todo!(),
-            Op::EmptySet => todo!(),
-            Op::AddItems => todo!(),
-            Op::FrozenSet => todo!(),
-            Op::Pop => todo!(),
-            Op::Dup => todo!(),
-            Op::Mark => Value::None,
-            Op::PopMark => todo!(),
-            Op::Get => todo!(),
-            Op::BinGet => todo!(),
-            Op::LongBinGet => todo!(),
-            Op::Put => todo!(),
-            Op::BinPut => todo!(),
-            Op::LongBinPut => Value::UInt(u32::from_le_bytes(self.next_bytes::<4>())),
-            Op::Memoize => Value::None,
-            Op::Ext1 => todo!(),
-            Op::Ext2 => todo!(),
-            Op::Ext4 => todo!(),
-            Op::GlobalOpcode => todo!(),
-            Op::StackGlobal => todo!(),
-            Op::Reduce => todo!(),
-            Op::Build => todo!(),
-            Op::Inst => todo!(),
-            Op::Obj => todo!(),
-            Op::NewObj => todo!(),
-            Op::NewObjEx => todo!(),
-            Op::Proto => Value::UInt(self.next_byte() as u32),
-            Op::Stop => todo!(),
-            Op::Frame => Value::ULong(u64::from_le_bytes(self.next_bytes::<8>())),
-            Op::Persid => todo!(),
-            Op::BinPersid => todo!(),
-            Op::ByteArray8 => todo!(),
-            Op::NextBuffer => todo!(),
-            Op::ReadonlyBuffer => todo!(),
+            Op::Unicode => todo!(),
         }
     }
 
@@ -226,11 +227,34 @@ impl<'a> VM<'a> {
                 (Op::BinInt1, Value::UInt(_)) => self.stack.push(arg),
                 (Op::Binfloat, Value::Float(_)) => self.stack.push(arg),
                 (Op::EmptyList, _) => self.stack.push(Value::List(Vec::new())),
+                (Op::EmptyDict, _) => self.stack.push(Value::Dict(HashMap::new())),
                 (Op::Frame, Value::ULong(_)) => self.stack.push(arg), // TODO: update
                 (Op::Mark, _) => self.stack.push(Value::Mark),
                 (Op::Memoize, _) => {
                     let val = self.stack.last().unwrap();
                     self.memo.push(val.clone());
+                }
+                (Op::SetItems, _) => {
+                    let values = {
+                        // Array of (K, V)
+                        let mut kv_values: Vec<(Value, Value)> = Vec::new();
+                        loop {
+                            let v = self.stack.pop().unwrap();
+                            if v == Value::Mark {
+                                break;
+                            }
+                            let k = self.stack.pop().unwrap();
+                            kv_values.insert(0, (k, v));
+                        }
+                        kv_values
+                    };
+                    if let Some(Value::Dict(map)) = self.stack.last_mut() {
+                        for (k, v) in values.into_iter() {
+                            map.insert(k, v);
+                        }
+                    } else {
+                        panic!("Stack ordering was wrong")
+                    }
                 }
                 (Op::ShortBinunicde, Value::String(_)) => self.stack.push(arg),
                 // Create a tuple from all topmost values in stack
