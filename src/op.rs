@@ -1,3 +1,5 @@
+// https://github.com/python/cpython/blob/3.12/Lib/pickletools.py
+
 pub const MARK: u8 = 40;
 pub const EMPTY_TUPLE: u8 = 41;
 pub const STOP: u8 = 46;
@@ -69,16 +71,16 @@ pub const READONLY_BUFFER: u8 = 152;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Op {
-    Int,            //(DecimalNlShort),
-    BinInt,         //(S4),
-    BinInt1,        //(u1),
-    BinInt2,        //2(u2),
-    Long,           //(DecimalNlLong),
-    Long1,          //(long1),
-    Long4,          //(long4),
-    String,         //(stringnl),
-    Binstring,      //(string4),
-    ShortBinstring, //(string1)
+    Int,
+    BinInt,
+    BinInt1,
+    BinInt2,
+    Long,
+    Long1,
+    Long4,
+    String,
+    Binstring,
+    ShortBinstring,
     Binbytes,
     ShortBinbytes,
     Binbytes8,

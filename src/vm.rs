@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::BufRead;
+use std::io::{BufRead, Read};
 
 use crate::op::*;
 
@@ -7,7 +7,7 @@ use crate::value::Value;
 
 pub struct VM<'a> {
     // Entire Program.
-    reader: &'a mut dyn BufRead,
+    reader: &'a mut dyn Read,
     // Either current frame or entire pickle file.
     working_buffer: Box<[u8]>,
     // Program counter;
@@ -21,10 +21,11 @@ pub struct VM<'a> {
     // Set if parsing a framed stream.
     is_framed: bool,
 }
+
 impl<'a> VM<'a> {
     // Init the VM by reading the first OP of the buffer
     // which should set the Protocol verison.
-    pub fn from(r: &'a mut dyn BufRead) -> Self {
+    pub fn from(r: &'a mut dyn Read) -> Self {
         let mut vm = VM {
             reader: r,
             version: 0,
