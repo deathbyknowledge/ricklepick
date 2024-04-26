@@ -12,12 +12,14 @@ pub enum Value {
     Tuple(Vec<Value>),
     List(Vec<Value>),
     Dict(HashMap<Value, Value>),
+    Bytes(Vec<u8>),
     Object(Instance),
+    Callable(Instance, Box<Value>),
     Mark,
     None,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Instance{
     name: String,
     module: String,
@@ -84,6 +86,16 @@ impl PartialEq for Value {
                     false
                 }
             }
+            (Value::Bytes(a), Value::Bytes(b)) => {
+                if a.len() == b.len() {
+                    self.to_string() == other.to_string()
+                } else {
+                    false
+                }
+            }
+            (Value::Callable(f1, arg1), Value::Callable(f2, arg2)) => {
+                *f1 == *f2 && arg1 == arg2
+            }
             (Value::Mark, Value::Mark) => true,
             (Value::None, Value::None) => true,
             _ => false,
@@ -135,7 +147,16 @@ impl Display for Value {
                     .join(", ");
                 write!(f, "[{s}]")
             }
+            Value::Bytes(v) => {
+                let s = v
+                    .iter()
+                    .map(|i| format!("{i:x}"))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "[{s}]")
+            },
             Value::Object(inst) => write!(f, "<{}.{} object at {:p}> (fields: {:?}, args: {:?}, kwargs: {:?})", inst.module, inst.name, inst, inst.fields_to_string(), inst.args, inst.kwargs),
+            Value::Callable(inst, arg) => write!(f, "*{}.{}({})", inst.module, inst.name, arg),
             Value::Mark => write!(f, "Mark"),
             Value::None => write!(f, "None"),
         }

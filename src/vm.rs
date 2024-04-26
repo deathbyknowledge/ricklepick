@@ -120,14 +120,19 @@ impl<'a> VM<'a> {
             Op::AddItems => todo!(),
             Op::Append => todo!(),
             Op::Appends => Value::None,
-            Op::Binbytes => todo!(),
-            Op::Binbytes8 => todo!(),
-            Op::Binfloat => Value::Float(f64::from_be_bytes(self.next_bytes::<8>())),
+            Op::BinBytes => {
+                let len = u32::from_le_bytes(self.next_bytes::<4>()) as usize;
+                let bytes = self.working_buffer[self.pc..self.pc+len].to_vec();
+                self.pc += len;
+                Value::Bytes(bytes)
+            },
+            Op::BinBytes8 => todo!(),
+            Op::BinFloat => Value::Float(f64::from_be_bytes(self.next_bytes::<8>())),
             Op::BinGet => Value::UInt(self.next_byte() as u32),
             Op::BinInt => Value::Int(i32::from_le_bytes(self.next_bytes::<4>())),
             Op::BinInt1 => Value::UInt(self.next_byte() as u32),
             Op::BinInt2 => Value::UInt(u16::from_le_bytes(self.next_bytes::<2>()) as u32),
-            Op::Binstring => {
+            Op::BinString => {
                 let len = i32::from_le_bytes(self.next_bytes::<4>());
                 let s = String::from_utf8(
                     self.working_buffer[self.pc..self.pc + (len as usize)].into(),
@@ -137,8 +142,8 @@ impl<'a> VM<'a> {
                 Value::String(s)
             }
             Op::BinPersid => todo!(),
-            Op::Binunicode => todo!(),
-            Op::Binunicode8 => todo!(),
+            Op::BinUnicode => todo!(),
+            Op::BinUnicode8 => todo!(),
             Op::BinPut => todo!(),
             Op::Build => Value::None,
             Op::ByteArray8 => todo!(),
@@ -168,8 +173,8 @@ impl<'a> VM<'a> {
             Op::Memoize => Value::None,
             Op::NewObj => Value::None,
             Op::NewObjEx => todo!(),
-            Op::Newfalse => Value::None,
-            Op::Newtrue => Value::None,
+            Op::NewFalse => Value::None,
+            Op::NewTrue => Value::None,
             Op::NextBuffer => todo!(),
             Op::None => todo!(),
             Op::Obj => todo!(),
@@ -179,7 +184,7 @@ impl<'a> VM<'a> {
             Op::Proto => Value::UInt(self.next_byte() as u32),
             Op::Put => todo!(),
             Op::ReadonlyBuffer => todo!(),
-            Op::Reduce => todo!(),
+            Op::Reduce => Value::None,
             Op::SetItem => todo!(),
             Op::SetItems => Value::None,
             Op::ShortBinbytes => todo!(),
@@ -197,7 +202,7 @@ impl<'a> VM<'a> {
             Op::Stop => todo!(),
             Op::String => todo!(),
             Op::Tuple => Value::None,
-            Op::Tuple1 => todo!(),
+            Op::Tuple1 => Value::None,
             Op::Tuple2 => Value::None,
             Op::Tuple3 => Value::None,
             Op::Unicode => todo!(),
@@ -225,8 +230,11 @@ impl<'a> VM<'a> {
                         panic!("Stack ordering was wrong");
                     }
                 }
+                (Op::BinBytes, Value::Bytes(_)) => { 
+                    self.stack.push(arg);
+                },
                 (Op::BinInt1, Value::UInt(_)) => self.stack.push(arg),
-                (Op::Binfloat, Value::Float(_)) => self.stack.push(arg),
+                (Op::BinFloat, Value::Float(_)) => self.stack.push(arg),
                 (Op::BinGet, Value::UInt(idx)) => {
                     self.stack.push(self.memo.get_mut(idx as usize).unwrap().clone());
                 },
@@ -249,7 +257,7 @@ impl<'a> VM<'a> {
                     let val = self.stack.last().unwrap();
                     self.memo.push(val.clone());
                 }
-                (Op::Newfalse, _) => {
+                (Op::NewFalse, _) => {
                     self.stack.push(Value::Bool(false));
                 }
                 (Op::NewObj, _) =>  {
@@ -262,8 +270,18 @@ impl<'a> VM<'a> {
                         panic!("Stack ordering was wrong");
                     }
                 }
-                (Op::Newtrue, _) => {
+                (Op::NewTrue, _) => {
                     self.stack.push(Value::Bool(true));
+                }
+                (Op::Reduce, _) => {
+                    let pytuple = self.stack.pop().expect("bark");
+                    let callable = self.stack.pop().expect("bark");
+
+                    if let (Value::Object(inst), _) = (callable, pytuple.clone()) {
+                      self.stack.push(Value::Callable(inst, Box::new(pytuple)));
+                    } else {
+                      panic!("This should not happen.");
+                    }
                 }
                 (Op::SetItems, _) => {
                     let values = {
@@ -313,6 +331,10 @@ impl<'a> VM<'a> {
                         values
                     };
                     self.stack.push(Value::Tuple(values));
+                }
+                (Op::Tuple1, _) => {
+                    let a = self.stack.pop().expect("meow");
+                    self.stack.push(Value::Tuple(vec![a]));
                 }
                 (Op::Tuple2, _) => {
                     let b = self.stack.pop().expect("meow");

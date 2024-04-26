@@ -37,9 +37,14 @@ write_pickle_file("test3", test3)
 test3.friend = Dog("tau")
 write_pickle_file("test4", test3)
 
+import torch
 
+# let's spice things up
+test5 = torch.tensor([1,2,3,4,5])
+write_pickle_file("test5", test5)
 
 read_pickle_file("test1")
 read_pickle_file("test2")
 read_pickle_file("test3")
 read_pickle_file("test4")
+read_pickle_file("test5")
