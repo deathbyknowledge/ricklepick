@@ -40,7 +40,7 @@ write_pickle_file("test4", test3)
 import torch
 
 # let's spice things up
-test5 = torch.tensor([1,2,3,4,5])
+test5 = torch.tensor([1,2,3,4,5,6])
 write_pickle_file("test5", test5)
 
 read_pickle_file("test1")

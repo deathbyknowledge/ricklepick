@@ -6,8 +6,8 @@ pub enum Value {
     String(String),
     Int(i32),
     UInt(u32),
-    Long(i64),
-    ULong(u64),
+    Long(i128),
+    ULong(u128),
     Float(f64),
     Tuple(Vec<Value>),
     List(Vec<Value>),
@@ -19,8 +19,75 @@ pub enum Value {
     None,
 }
 
+impl Value {
+    pub fn as_bool(self) -> Option<bool> {
+        if let Self::Bool(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_string(self) -> Option<String> {
+        if let Self::String(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_uint(self) -> Option<u32> {
+        if let Self::UInt(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_int(self) -> Option<i32> {
+        if let Self::Int(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_ulong(self) -> Option<u128> {
+        if let Self::ULong(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_long(self) -> Option<i128> {
+        if let Self::Long(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_bytes(self) -> Option<Vec<u8>> {
+        if let Self::Bytes(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_instance(self) -> Option<Instance> {
+        if let Self::Object(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+
+}
+
 #[derive(Debug, Clone, PartialEq)]
-pub struct Instance{
+pub struct Instance {
     name: String,
     module: String,
     fields: HashMap<String, Value>,
@@ -30,7 +97,25 @@ pub struct Instance{
 
 impl Instance {
     pub fn new(name: String, module: String) -> Self {
-        Instance {name, module, fields: HashMap::new(), args: Vec::new(), kwargs: None }
+        Instance {
+            name,
+            module,
+            fields: HashMap::new(),
+            args: Vec::new(),
+            kwargs: None,
+        }
+    }
+
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn module(&self) -> String {
+        self.module.clone()
+    }
+
+    pub fn as_key(&self) -> String {
+        format!("{}.{}", self.module, self.name)
     }
 
     pub fn set_fields(&mut self, new_fields: HashMap<Value, Value>) {
@@ -51,7 +136,7 @@ impl Instance {
             .map(|(k, v)| format!("{k}: {v}"))
             .collect::<Vec<String>>()
             .join(", ");
-        return s;
+        s
     }
 }
 
@@ -93,9 +178,7 @@ impl PartialEq for Value {
                     false
                 }
             }
-            (Value::Callable(f1, arg1), Value::Callable(f2, arg2)) => {
-                *f1 == *f2 && arg1 == arg2
-            }
+            (Value::Callable(f1, arg1), Value::Callable(f2, arg2)) => *f1 == *f2 && arg1 == arg2,
             (Value::Mark, Value::Mark) => true,
             (Value::None, Value::None) => true,
             _ => false,
@@ -114,7 +197,7 @@ impl std::hash::Hash for Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Bool(v) => write!(f,"{}", if *v {"True"} else {"False"}),
+            Value::Bool(v) => write!(f, "{}", if *v { "True" } else { "False" }),
             Value::String(s) => write!(f, "'{s}'"),
             Value::Int(v) => write!(f, "{v}"),
             Value::UInt(v) => write!(f, "{v}"),
@@ -154,9 +237,17 @@ impl Display for Value {
                     .collect::<Vec<String>>()
                     .join(", ");
                 write!(f, "[{s}]")
-            },
-            Value::Object(inst) => write!(f, "<{}.{} object at {:p}> (fields: {:?}, args: {:?}, kwargs: {:?})", inst.module, inst.name, inst, inst.fields_to_string(), inst.args, inst.kwargs),
-            Value::Callable(inst, arg) => write!(f, "*{}.{}({})", inst.module, inst.name, arg),
+            }
+            Value::Object(inst) => write!(
+                f,
+                "<{} object at {:p}> (fields: {:?}, args: {:?}, kwargs: {:?})",
+                inst.as_key(),
+                inst,
+                inst.fields_to_string(),
+                inst.args,
+                inst.kwargs
+            ),
+            Value::Callable(inst, arg) => write!(f, "*{}({})", inst.as_key(), arg),
             Value::Mark => write!(f, "Mark"),
             Value::None => write!(f, "None"),
         }
